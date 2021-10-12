@@ -1,0 +1,20 @@
+{
+  "weights": "yolov5/weights/crowdhuman_yolov5m.pt",
+  "source": "0",
+  "output": "inference/output",
+  "img_size": 640,
+  "conf_thres": 0.4,
+  "iou_thres": 0.45,
+  "fourcc": "mp4v",
+  "device": "",
+  "show_vid": false,
+  "save_vid": false,
+  "save_txt": false,
+  "classes": [
+    0
+  ],
+  "agnostic_nms": false,
+  "augment": false,
+  "config_deepsort": "deep_sort_pytorch/configs/deep_sort.yaml",
+  "monitor_num": 1
+}

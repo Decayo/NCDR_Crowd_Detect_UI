@@ -1,0 +1,20 @@
+{
+    "_log_time": 1,
+    "_show_video_streaming": false,
+    "unique_refresh_time": 180,
+    "g_isheadless": false,
+    "output_format_string": "\u76ee\u524d\u5075\u6e2c\u5230 {people_count} (FPS:{fps:.2f})\\n\u4eba\u6d41 \uff1a{len(g_unique_id_list)} / {_log_time}\u79d2 ",
+    "img_size_zoom": 1,
+    "detect_interval_time": 0,
+    "write_interval_time": 10,
+    "write_csv_format": "Time|Title|Count|AvgCount|TotalCount",
+    "sound_effect": "path/",
+    "now_detect_count": 0,
+    "avg_detect_count": 0.0,
+    "total_detect_count": 0,
+    "date_string": "",
+    "exe_title": "\u5373\u6642\u4eba\u6d41\u5075\u6e2c\u8edf\u9ad4",
+    "model_cfg_json_path": "yolov5_model_args.txt",
+    "csv_Writing": false,
+    "input_url": ""
+}

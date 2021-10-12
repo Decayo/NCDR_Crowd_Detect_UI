@@ -1,0 +1,23 @@
+{
+    "_log_time": 1,
+    "_show_video_streaming": false,
+    "unique_refresh_time": 182,
+    "g_isheadless": false,
+    "output_format_string": "{date_string}\u76ee\u524d\u5075\u6e2c\u5230 {people_count} (FPS:{fps:.2f})\\\\n\u4eba\u6d41 \uff1a{unique_id_list_count} / {l_log_time}\u79d2",
+    "img_size_zoom": 1.0,
+    "detect_interval_time": 0,
+    "write_interval_time": 10,
+    "write_csv_format": "Time|Title|Count|AvgCount|TotalCount ",
+    "sound_effect": "J:/master_1_down/yolo/crowd_detect-20210701T114137Z-001/crowd_detect/ding.mp4",
+    "use_sound_effect": true,
+    "sound_threshold": 10,
+    "now_detect_count": 0,
+    "avg_detect_count": 0.0,
+    "total_detect_count": 0,
+    "date_string": "",
+    "exe_title": "\u5373\u6642\u4e32\u6d41\u5f71\u7247\u7fa4\u773e\u76e3\u6e2c\u8edf\u9ad4",
+    "model_cfg_json_path": "yolov5_model_args.txt",
+    "csv_Writing": false,
+    "csv_w_path": null,
+    "input_url": ""
+}
