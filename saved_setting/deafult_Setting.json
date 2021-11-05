@@ -1,0 +1,23 @@
+{
+    "_log_time": 1,
+    "_show_video_streaming": false,
+    "unique_refresh_time": 180,
+    "g_isheadless": false,
+    "output_format_string": "{dtstring}\u76ee\u524d\u5075\u6e2c\u5230 {people_count} (FPS:{fps:.2f})\\\\n\u4eba\u6d41 \uff1a{unique_id_list_count} / {l_log_time}\u79d2",
+    "img_size_zoom": 1.0,
+    "detect_interval_time": 0,
+    "write_interval_time": 10,
+    "write_csv_format": "Time|Title|Count|AvgCount|TotalCount",
+    "sound_effect": "alarm.wav",
+    "use_sound_effect": false,
+    "sound_threshold": 10,
+    "now_detect_count": 0,
+    "avg_detect_count": 0,
+    "total_detect_count": 0,
+    "date_string": "2021-10-14 13:22:44 - ",
+    "exe_title": "即時串流偵測軟體",
+    "model_cfg_json_path": "yolo_model_args/yolov5_model_default.json",
+    "csv_Writing": false,
+    "csv_w_path": "",
+    "input_url": ""
+}

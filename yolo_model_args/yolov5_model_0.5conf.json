@@ -3,7 +3,7 @@
   "source": "0",
   "output": "inference/output",
   "img_size": 640,
-  "conf_thres": 0.4,
+  "conf_thres": 0.5,
   "iou_thres": 0.45,
   "fourcc": "mp4v",
   "device": "",

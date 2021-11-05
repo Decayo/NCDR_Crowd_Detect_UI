@@ -4,7 +4,7 @@
   "output": "inference/output",
   "img_size": 640,
   "conf_thres": 0.4,
-  "iou_thres": 0.45,
+  "iou_thres": 0.4,
   "fourcc": "mp4v",
   "device": "",
   "show_vid": false,

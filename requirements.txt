@@ -27,12 +27,17 @@ pandas
 
 # extras --------------------------------------
 thop  # FLOPS computation
-pycocotools>=2.0  # COCO mAP
-pafy
+
+
 pyqt5
-shutil
+pytest-shutil
 mss
-tkinter
+tk
 pywin32
 selenium
 playsound
+
+easydict
+webdriver-manager
+PyQt5-tools
+#pycocotools>=2.0  # COCO mAP

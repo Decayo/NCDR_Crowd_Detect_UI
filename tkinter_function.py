@@ -11,7 +11,7 @@ from mss import mss
 import numpy
 import time
 def get_real_resolution():
-    """获取真实的分辨率"""
+
     hDC = win32gui.GetDC(0)
     # 横向分辨率
     w = win32print.GetDeviceCaps(hDC, win32con.DESKTOPHORZRES)
@@ -21,7 +21,7 @@ def get_real_resolution():
 
 
 def get_screen_size():
-    """获取缩放后的分辨率"""
+
     w = GetSystemMetrics(0)
     h = GetSystemMetrics(1)
     return w, h
@@ -30,8 +30,6 @@ def get_screen_size():
 real_resolution = get_real_resolution()
 screen_size = get_screen_size()
 
-# Windows 设置的屏幕缩放率
-# ImageGrab 的参数是基于显示分辨率的坐标，而 tkinter 获取到的是基于缩放后的分辨率的坐标
 screen_scale_rate = round(real_resolution[0] / screen_size[0], 2)
 
 
@@ -79,7 +77,7 @@ class SelectionArea:
     def setStartPoint(self, x, y):
         self.canvas.delete('area', 'lt_txt', 'rb_txt')
         self.area_box.setStart(x, y)
-        # 开始坐标文字
+
         self.canvas.create_text(
             x, y - 10, text=f'({x}, {y})', fill='red', tag='lt_txt')
 
@@ -87,7 +85,7 @@ class SelectionArea:
         self.area_box.setEnd(x, y)
         self.canvas.delete('area', 'rb_txt')
         box_area = self.area_box.box()
-        # 选择区域
+
         self.canvas.create_rectangle(
             *box_area, fill='black', outline='red', width=2, tags="area")
         self.canvas.create_text(
@@ -104,14 +102,13 @@ class ScreenShot():
         self.height = self.win.winfo_screenheight()
 
         #self.win.geometry(f"{self.width}x{self.height}+{self.width}+0")
-        # 无边框，没有最小化最大化关闭这几个按钮，也无法拖动这个窗体，程序的窗体在Windows系统任务栏上也消失
+
         self.win.overrideredirect(True)
         
         self.win.attributes('-alpha', 0.25)
         #self.win.configure(bg = 'grey')
         self.is_selecting = False
 
-        # 绑定按 Enter 确认, Esc 退出
         self.win.bind('<KeyPress-Escape>', self.exit)
         self.win.bind('<KeyPress-Return>', self.confirmScreenShot)
         self.win.bind('<Button-1>', self.selectStart)
@@ -167,31 +164,31 @@ class ScreenShot():
 # def main():
 #     ScreenShot()
 
-def draw_area_box(box):
-    dc = win32gui.GetDC(0)
-    dcObj = win32ui.CreateDCFromHandle(dc)
-    hwnd = win32gui.WindowFromPoint((0,0))
-    _sx=int(box[0])
-    _sy=int(box[1])
-    _ex=int(box[2])
-    _ey=int(box[3])
+# def draw_area_box(box):
+#     dc = win32gui.GetDC(0)
+#     dcObj = win32ui.CreateDCFromHandle(dc)
+#     hwnd = win32gui.WindowFromPoint((0,0))
+#     _sx=int(box[0])
+#     _sy=int(box[1])
+#     _ex=int(box[2])
+#     _ey=int(box[3])
    
-    print(box_cor)
+#     print(box_cor)
 
-    while(True):
-        print("thread runnung?")
-        rect = win32gui.CreateRoundRectRgn(*box_cor, 4 , 4)
-        win32gui.RedrawWindow(hwnd, box_cor, rect, win32con.RDW_INVALIDATE)
-        for x in range(25):
-            win32gui.SetPixel(dc, _sx+x, _sy, red)
-            win32gui.SetPixel(dc, _sx+x, _ey, red)
-            win32gui.SetPixel(dc, _ex-x, _sy, red)
-            win32gui.SetPixel(dc, _ex-x, _ey, red)
-            for y in range(25):
-                win32gui.SetPixel(dc, _sx, _sy+y, red)
-                win32gui.SetPixel(dc, _ex, _sy+y, red)
-                win32gui.SetPixel(dc, _sx, _ey-y, red)
-                win32gui.SetPixel(dc, _ex, _ey-y, red)
+#     while(True):
+#         print("thread runnung?")
+#         rect = win32gui.CreateRoundRectRgn(*box_cor, 4 , 4)
+#         win32gui.RedrawWindow(hwnd, box_cor, rect, win32con.RDW_INVALIDATE)
+#         for x in range(25):
+#             win32gui.SetPixel(dc, _sx+x, _sy, red)
+#             win32gui.SetPixel(dc, _sx+x, _ey, red)
+#             win32gui.SetPixel(dc, _ex-x, _sy, red)
+#             win32gui.SetPixel(dc, _ex-x, _ey, red)
+#             for y in range(25):
+#                 win32gui.SetPixel(dc, _sx, _sy+y, red)
+#                 win32gui.SetPixel(dc, _ex, _sy+y, red)
+#                 win32gui.SetPixel(dc, _sx, _ey-y, red)
+#                 win32gui.SetPixel(dc, _ex, _ey-y, red)
 def getbbox_area():
     return srs.box_area
 
@@ -267,11 +264,3 @@ if __name__ == '__main__':
     #新增OPENCV 持續錄至該區域
     #之後 和 detect 做混合 
         
-#TODO
-#將 box的範圍確定後， 用 win gui 顯示在上面
-# enter後有 grab 顯示出標 將 end 改成 wingui 相關 ?
-
-#之後嘗試錄影該區域
-#顯示一個視窗 list ?
-#看看能不能輸入資訊給 opencvq
-#可以就結束

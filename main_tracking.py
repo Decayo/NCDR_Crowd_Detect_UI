@@ -23,7 +23,7 @@ import cv2
 from mss import mss
 import os
 import threading
-from tkinter_test import *
+from tkinter_function import *
 #from ui_main import *
 from win32 import win32api, win32gui
 from win32.lib import win32con
@@ -47,15 +47,16 @@ from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import WebDriverException
 from types import SimpleNamespace as Namespace
-from playsound import playsound
+#from playsound import playsound
+from pygame import mixer
 import webbrowser
 import atexit
-
+import pandas as pd
 import json
 #endregion
 class Main_Tracking():
     os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = r'J:\Anaconda\envs\Pytorch_3,6\Lib\site-packages\PyQt5\Qt5\plugins'
-
+    os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
     class savable_var(object):
         def __init__(self):
             #print log and output time ,default 0 is changed then print
@@ -71,7 +72,7 @@ class Main_Tracking():
             self.detect_interval_time = 0
             self.write_interval_time = 10
             self.write_csv_format='Time|Title|Count|AvgCount|TotalCount'
-            self.sound_effect = 'ding.mp4'
+            self.sound_effect = 'alarm.wav'
             self.use_sound_effect = False
             self.sound_threshold = 10
             self.now_detect_count = 0
@@ -79,7 +80,7 @@ class Main_Tracking():
             self.total_detect_count = 0
             self.date_string = ''
             self.exe_title = '即時人流偵測軟體'
-            self.model_cfg_json_path = 'yolov5_model_args.txt'
+            self.model_cfg_json_path = 'yolov5_model_default.json'
             self.csv_Writing = False
             
             self.csv_w_path = None
@@ -90,7 +91,7 @@ class Main_Tracking():
         convert the instance of this class to json
         '''
             return json.dumps(self, indent = 4, default=lambda o: o.__dict__)
-    def __init__(self,run_id):
+    def __init__(self,run_id,saved_file_init_load = None):
         #ui Mainwindow class ref
         self.ui = None
         #args model config ref
@@ -120,6 +121,10 @@ class Main_Tracking():
 
         self.sv = self.savable_var()
         self.sv_tojson =  self.sv.to_json()
+        #print("model path 1 : "+ self.sv.model_cfg_json_path)
+    
+       
+            #self.label_2.setText(os.path.basename(saved_file_init_load))
         # print(self.sv_tojson)
         # self.sv.sound_effect = 'haha bitch'
         # print(self.sv.sound_effect)
@@ -146,11 +151,11 @@ class Main_Tracking():
         self.parser.add_argument('--classes', nargs='+', default=[0], type=int, help='filter by class')
         self.parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
         self.parser.add_argument('--augment', action='store_true', help='augmented inference')
-        self.parser.add_argument("--config_deepsort", type=str, default="deep_sort_pytorch/configs/deep_sort.yaml")
+        self.parser.add_argument("--config-deepsort", type=str, default="deep_sort_pytorch/configs/deep_sort.yaml")
         self.parser.add_argument("--monitor-num", type=int, default=1)
         self.args = self.parser.parse_args()
-        with open('yolov5_model_args.txt', 'w') as f:
-            json.dump(self.args.__dict__, f, indent=2)
+        # with open(self.sv.model_cfg_json_path, 'w') as f:
+        #     json.dump(self.args.__dict__, f, indent=2)
         
         self.app = QtWidgets.QApplication(sys.argv)
         MainWindow = QtWidgets.QMainWindow()
@@ -161,11 +166,23 @@ class Main_Tracking():
         MainWindow.show()
         self.ui.get_savable_ui_var()
         #載入初始設定
-        self.ui.setting_savable_ui_var()
+        if(saved_file_init_load is not None):
+            with open(saved_file_init_load,encoding = 'utf-8') as json_data:
+                data_dict = json.load(json_data)
+            #print(data_dict)
+            tmp_dump_dict = json.dumps(data_dict, indent=4)
+            print(tmp_dump_dict)
+            #self.outer.sv = self.outer.savable_var(**data_dict)
+            self.sv = json.loads(tmp_dump_dict,object_hook=lambda d: Namespace(**d))
+            self.ui.setting_savable_ui_var()
+            self.now_log_out = '\n 讀取設定檔完成 ：\n' + saved_file_init_load +"\n"
+        else:
+            self.ui.setting_savable_ui_var()
         try:
             with open(self.sv.model_cfg_json_path, 'r') as f:
                 tmp = "讀取模型檔案成功，參數如下：\n"
                 tmp += self.sv.model_cfg_json_path +'\n'
+                #print("WHY? " + tmp)
                 self.args = self.parser.parse_args()
                 try :
                     self.args.__dict__ = json.load(f)
@@ -176,6 +193,7 @@ class Main_Tracking():
                 except:
                     tmp += "讀取模型檔案失敗，格式不符合：\n"
                     tmp += '將採用初始設置... \n'
+                    #print("wrong state?")
                     tmpstr = str(self.args.__dict__)
                     tmpstr = tmpstr.replace(',',',\n')
                     tmp += tmpstr
@@ -189,7 +207,10 @@ class Main_Tracking():
             tmpstr = tmpstr.replace(',',',\n')
             tmp += tmpstr
             self.now_log_out = tmp
-            
+        #---------check pytorch edition
+        
+        self.now_log_out =self.now_log_out + "\n\nPytorch 版本：" + str(torch.__version__) + "\n cuda是否啟用(GPU加速:)" + str( torch.cuda.is_available()) +"\n\n 若GPU加速未開啟，請安裝與pytorch版本相應cuda版本"
+
         #self.args = parser.parse_args()
         self.args.img_size = check_img_size(self.args.img_size)
         self.root_dir = os.getcwd()
@@ -210,6 +231,7 @@ class Main_Tracking():
             received from GUI (such as abort).
             """
             while True:
+                time.sleep(0.01)
                 if(self.outer.sv._log_time <= 0.1):
                     time.sleep(0.1)
                 else:
@@ -239,12 +261,19 @@ class Main_Tracking():
             received from GUI (such as abort).
             """
             while True:
+                time.sleep(0.01)
                 if(self.outer.sv._log_time <= 0.1):
                     time.sleep(0.1)
                 else:
                     time.sleep(self.outer.sv._log_time)
                 if(self.outer.sv.avg_detect_count >= self.outer.sv.sound_threshold) and self.outer.sv.use_sound_effect:
-                    playsound(self.outer.sv.sound_effect)
+                    try:
+                        mixer.music.load(self.outer.sv.sound_effect)
+                        mixer.music.play()
+                    except:
+                        time.sleep(0.3)
+                        self.outer.now_log_out = "音效檔案遺失"
+                    #playsound(self.outer.sv.sound_effect)
                 if(self.outer.sv.avg_detect_count == self.last_adc):
                     #print('now waiting output')
                     continue
@@ -266,6 +295,7 @@ class Main_Tracking():
             received from GUI (such as abort).
             """
             while True:
+                time.sleep(0.01)
                 if(self.outer.sv._log_time <= 0.1):
                     time.sleep(0.1)
                 else:
@@ -519,6 +549,9 @@ class Main_Tracking():
             self.lineEdit_10 = QtWidgets.QLineEdit(self.centralwidget)
             self.lineEdit_10.setMaximumSize(QtCore.QSize(30, 16777215))
             self.lineEdit_10.setObjectName("lineEdit_10")
+            self.pushButton_7 = QtWidgets.QPushButton(self.centralwidget)
+            self.pushButton_7.setObjectName("pushButton_7")
+            self.gridLayout.addWidget(self.pushButton_7, 25, 4, 1, 1)
             self.gridLayout.addWidget(self.lineEdit_10, 17, 5, 1, 1)
             self.lineEdit = QtWidgets.QLineEdit(self.centralwidget)
             sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
@@ -541,7 +574,7 @@ class Main_Tracking():
             self.commandLinkButton.setLayoutDirection(QtCore.Qt.LeftToRight)
             self.commandLinkButton.setAutoFillBackground(False)
             icon = QtGui.QIcon()
-            icon.addPixmap(QtGui.QPixmap("D:/MiPonyDownload/1200px-Torchlight_help_icon.svg.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            icon.addPixmap(QtGui.QPixmap("1200px-Torchlight_help_icon.svg.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             self.commandLinkButton.setIcon(icon)
             self.commandLinkButton.setObjectName("commandLinkButton")
             self.gridLayout.addWidget(self.commandLinkButton, 1, 6, 1, 1)
@@ -607,6 +640,7 @@ class Main_Tracking():
             self.lineEdit_10.setText(_translate("MainWindow", "10"))
             self.lineEdit.setText(_translate("MainWindow", "1"))
             self.commandLinkButton.setText(_translate("MainWindow", "使用手冊"))
+            self.pushButton_7.setText(_translate("MainWindow", "統計人數歸零"))
     
         def setup_ui_extension(self,MainWindow):
             self.m_MainWindow = MainWindow 
@@ -619,7 +653,7 @@ class Main_Tracking():
             self.pushButton_8.clicked.connect(self.save_setting)
             self.pushButton_9.clicked.connect(self.load_setting)
             self.pushButton.clicked.connect(self.load_model_config)
-
+            self.pushButton_7.clicked.connect(self.reset_people_count)
             self.commandLinkButton.clicked.connect(lambda: webbrowser.open('https://hackmd.io/@ksv1v_gOQaSTb706S_k4BQ/H14737lHt'))
 
             self.lineEdit.textChanged.connect(self.outer.get_log_time_chaged)
@@ -645,7 +679,10 @@ class Main_Tracking():
             self.t3 = self.outer.AvgCount_UpdateThread(self.outer)
             self.t3.received.connect(self.label_14.setText)
             self.t3.start()
-
+        def reset_people_count(self):
+            self.outer.sv.now_detect_count = 0
+            self.outer.sv.avg_detect_count = 0.0
+            self.outer.sv.total_detect_count = 0
         def change_title(self):
             _translate = QtCore.QCoreApplication.translate
             self.outer.sv.exe_title = self.lineEdit_4.text()
@@ -660,7 +697,7 @@ class Main_Tracking():
                 elif(f < 0):
                     self.outer.now_log_out = "輸入不能為負數"
                     return
-                self.outer.img_size_zoom = f
+                self.outer.sv.img_size_zoom = f
                 self.outer.now_log_out = "圖像倍率更改為 " +text+" 倍"
             except ValueError:
                 self.outer.now_log_out = '輸入僅能為整數或小數點'
@@ -733,7 +770,7 @@ class Main_Tracking():
             except EnvironmentError:
                 print("error model...")
                 time.sleep(1)
-                self.outer.args = parser.parse_args()
+                self.outer.args = self.outer.parser.parse_args()
                 tmp = "讀取模型檔案失敗，採用預設設置\n"
                 tmpstr = str(self.outer.args.__dict__)
                 tmpstr = tmpstr.replace(',',',\n')
@@ -745,20 +782,32 @@ class Main_Tracking():
             u = self
         def sound_effect_path(self):
             filename,_ = QtWidgets.QFileDialog.getOpenFileName(None, 
-            "Open a media file", "", "All Files (*.*)")
+            "Open a media file", "", "wav (*.wav)")
             self.outer.sv.sound_effect = filename
             self.label_7.setText(os.path.basename(filename))
             
         def sound_effect_checkbox(self):
-            self.outer.sv.use_sound_effect = ~self.outer.sv.use_sound_effect
+            self.outer.sv.use_sound_effect = not self.outer.sv.use_sound_effect
             if(self.outer.sv.sound_effect is None):
-                self.outer.now_log_out = "請先指定音樂檔案路徑！"
+                self.outer.now_log_out = "請先指定音效檔案路徑！"
                 self.outer.sv.use_sound_effect = False
                 self.checkBox_2.setChecked(False)
+            else:
+                if(self.outer.sv.use_sound_effect):
+                    #print(self.outer.sv.sound_effect)
+                    mixer.init()
+                    try:
+                        mixer.music.load(self.outer.sv.sound_effect)
+                        mixer.music.play()
+                    except:
+                        self.outer.sv.use_sound_effect = not self.outer.sv.use_sound_effect
+                        self.checkBox_2.setChecked(False)
+                        time.sleep(0.3)
+                        self.outer.now_log_out = "\n音效檔案遺失，請重新指定"
                 
         def csv_path_setting(self):
             filename,_ = QtWidgets.QFileDialog.getSaveFileName(None, 
-            "Save a csv File", "", "CSV (*.csv)")
+            "Save a csv File", "", "Data File (*.xlsx *.csv *.dat);; Excel File (*.xlsx *.xls)")
             self.outer.sv.csv_w_path = filename
             self.label_25.setText(os.path.basename(filename))
             
@@ -796,7 +845,7 @@ class Main_Tracking():
             #print(s) 
         def model_parameter_setting(self):
             u=self
-            #endregion
+        
         def setting_savable_ui_var(self):
             self.lineEdit.setText(str(self.outer.sv._log_time))
             #show streaming opencv float windows
@@ -807,6 +856,10 @@ class Main_Tracking():
             self.checkBox_4.setChecked(self.outer.sv.g_isheadless)
             self.checkBox_2.setChecked(self.outer.sv.use_sound_effect)
             self.checkBox_3.setChecked(self.outer.sv.csv_Writing)
+            if(self.outer.sv.csv_Writing == True):
+                # init_thread so we need to reclick two time
+                self.outer.csv_checkbox()  #false
+                self.outer.csv_checkbox()  #true and start thread
             #output format, user can define log out output format
             self.lineEdit_3.setText(str(self.outer.sv.output_format_string)) 
             self.lineEdit_5.setText(str(self.outer.sv.img_size_zoom))
@@ -853,16 +906,17 @@ class Main_Tracking():
             #print("???")
             #print(self.outer.sv.exe_title)
             #self.outer.svlf.model_cfg_json_path = 'yolov5_model_args.txt'
+            
             self.outer.sv.csv_Writing = self.checkBox_3.isChecked()
             self.outer.sv.input_url = self.lineEdit_2.text()
             
     #--------不可替代之邏輯FUNCTION-----------
     #region ui button function
     def show_vid_checkbox(self):
-        self.sv._show_video_streaming = ~self.sv._show_video_streaming
+        self.sv._show_video_streaming = not self.sv._show_video_streaming
     
     def headless_checkbox(self):
-        self.sv.g_isheadless = ~self.sv.g_isheadless     
+        self.sv.g_isheadless = not self.sv.g_isheadless     
     #endregion
     
     #region YOLOV5 原生FUNCTION 用於判斷 BBOX的位置
@@ -921,12 +975,15 @@ class Main_Tracking():
                 self.total_unique_id_dict.update(d)
     
     def checkIfDuplicates(self,listOfElems):
-        ''' Check if given list contains any duplicates '''    
+        ''' Check if given list contains any duplicates ''' 
+        #print("checkIfDuplicates")
+        #print(listOfElems)   
         for elem in listOfElems:
             if elem in self.g_unique_id_list:
                 continue
             else:
                 self.g_unique_id_list.append(elem)  
+        #print(self.g_unique_id_list)
     #url detect function
     def detect_function(self,opt,mode,url):
         out, source, weights, show_vid, save_vid, save_txt, imgsz = \
@@ -993,27 +1050,41 @@ class Main_Tracking():
             self.g_webdriver = webdriver.Firefox(executable_path=GeckoDriverManager().install(),options=options)
             #now_log_out = logging.getLogger("WDM")
             self.g_webdriver.get(url)
-            try:
-                WebDriverWait(self.g_webdriver, 15).until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[@class='ytp-large-play-button ytp-button']"))).click()
-                # WebDriverWait(driver,5).until(EC.element_to_be_clickable((By.CLASS_NAME,'ytp-iv-video-content')))
-            except TimeoutException as ex:
-                print('out of time')
-                sys.exit(1)
-            # time.sleep(10)
-
+            
             if(mode == "yt"):
-                youtube_panel_xy = None
                 try:
-                    youtube_panel_xy = self.g_webdriver.find_element_by_xpath("//div[@class='ytp-iv-video-content']")
-                except:
+                    WebDriverWait(self.g_webdriver, 15).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//button[@class='ytp-large-play-button ytp-button']"))).click()
+                    # WebDriverWait(driver,5).until(EC.element_to_be_clickable((By.CLASS_NAME,'ytp-iv-video-content')))
+                except TimeoutException as ex:
+                    print('out of time')
+                    sys.exit(1)
+                # time.sleep(10)
+
+                youtube_panel_xy = None
+                retrycount = 0
+                retrymax_count = 10
+                while(youtube_panel_xy is None):
+                    self.now_log_out = "搜尋YOUTUBE 視窗 (Retry time : " + str(retrycount) + " / " + str(retrymax_count) + "\n"
+                    retrycount+=1
+                    time.sleep(0.5)
+                    if(retrycount == retrymax_count):
+                        self.now_log_out = "超過重新尋找次數，請重新開啟程序..."
+                        break
                     try:
-                        print("'ytp-iv-video-content' not found try find player-api")
-                        youtube_panel_xy = self.g_webdriver.find_element_by_xpath("//div[@id='player-container-inner']")
-                    except: 
-                        self.now_log_out = " 找不到YOUTUBE 撥放器HTML，請嘗試重新讀取"
-                location = youtube_panel_xy.location
-                size  = youtube_panel_xy.size
+                        WebDriverWait(self.g_webdriver, 15).until(EC.element_to_be_clickable(
+                        (By.XPATH, "//div[@class='ytp-iv-video-content']")))
+                        youtube_panel_xy = self.g_webdriver.find_element_by_xpath("//div[@class='ytp-iv-video-content']")
+                    except:
+                        try:
+                            WebDriverWait(self.g_webdriver, 15).until(EC.element_to_be_clickable(
+                            (By.XPATH, "//div[@id='player-container-inner']")))
+                            print("'ytp-iv-video-content' not found try find player-api")
+                            youtube_panel_xy = self.g_webdriver.find_element_by_xpath("//div[@id='player-container-inner']")
+                        except: 
+                            self.now_log_out = " 找不到YOUTUBE 撥放器HTML，請嘗試重新讀取"
+                    location = youtube_panel_xy.location
+                    size  = youtube_panel_xy.size
             elif(mode == 'cctv'):
                 if 'cctv.aspx' in url :        
                     self.g_webdriver.get(url)
@@ -1042,7 +1113,7 @@ class Main_Tracking():
                 #png = driver.get_screenshot_as_png()
                 src = img.get_attribute('src')
             
-            size  = youtube_panel_xy.size
+            #size  = youtube_panel_xy.size
             print('l:',location)
             print('s:',size)
                 #png = driver.get_screenshot_as_png()
@@ -1066,15 +1137,20 @@ class Main_Tracking():
         self.total_unique_id_dict.clear()
 
         last_img_size = self.sv.img_size_zoom
+        sct_img = None
+        src_img_h ,src_img_w = (0,0) 
+        tt1=0
+        tt2=0
+        self._time_counter = 0
         while (self.src_state == 1):  
             dt = datetime.now()
-            
+            tt1 = time.time()
             time.sleep(self.sv.detect_interval_time)
             # if(detecting==True):
             #     break
             frame_idx = frame_idx + 1
 
-            sct_img = None
+            
             if (mode == "yt"):
                 try:
                     png = self.g_webdriver.get_screenshot_as_png()
@@ -1119,19 +1195,25 @@ class Main_Tracking():
                 sct_img = numpy.array(sct_img)
                 sct_img = cv2.cvtColor(sct_img, cv2.COLOR_RGBA2RGB)
             
-            
+            if(src_img_h  == 0):
+                #print(img.shape)
+                src_img_h,src_img_w,_ = sct_img.shape
             #放大倍率功能 同時放大模型所需的內建imgsz 
-            if(self.sv.img_size_zoom != 1):
-                #print("放大倍率")
-                sct_img = cv2.resize(sct_img,(0,0),fx=float(self.sv.img_size_zoom),fy=float(self.sv.img_size_zoom),interpolation=cv2.INTER_CUBIC)
-                if(last_img_size!=self.sv.img_size_zoom ):
-                    imgsz = imgsz * (1/last_img_size)
-                    print(imgsz,last_img_size,self.sv.img_size_zoom)
-                    imgsz = int(imgsz *self.sv.img_size_zoom)
-                    last_img_size = self.sv.img_size_zoom
+            if(self.sv.img_size_zoom >= 1):
+                #print("放大倍率?",imgsz )
+                imgsz = opt.img_size
+                imgsz = int(imgsz *self.sv.img_size_zoom)
+                tmph = int(src_img_h * self.sv.img_size_zoom)
+                tmpw = int(src_img_w * self.sv.img_size_zoom)
+                #print(img.shape)
+                try:
+                    sct_img = cv2.resize(sct_img,(tmpw,tmph),interpolation=cv2.INTER_CUBIC)
+                except:
+                    continue
+
             dataset = LoadScreen_Capture(sct_img,img_size=imgsz)
             time.sleep(0.01)
-            img, im0 , vid_cap = dataset.__next__()
+            img, im0 ,_ = dataset.__next__()
             img = torch.from_numpy(img).to(device)
             img = img.half() if half else img.float()  # uint8 to fp16/32
             img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -1148,7 +1230,8 @@ class Main_Tracking():
             pred = non_max_suppression(
                 pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
             t2 = time_synchronized()
-            self._time_counter += (t2-t1)
+            self._time_counter += abs(tt2-tt1)
+            #print(self._time_counter)
             # Process detections
             for i, det in enumerate(pred):  # detections per image
                 #p, s, im0 = path, '', im0s
@@ -1182,27 +1265,33 @@ class Main_Tracking():
 
                     xywhs = torch.Tensor(xywh_bboxs)
                     confss = torch.Tensor(confs)
+                    
+                    
 
+
+                    for redetect in range(3):
                     # pass detections to deepsort
-                    outputs = deepsort.update(xywhs, confss, im0)
-
+                        outputs = deepsort.update(xywhs, confss, im0)
+                    
                     # draw boxes for visualization
                     if len(outputs) > 0:
+                        #print("output?")
+                        #print(outputs)
                         bbox_xyxy = outputs[:, :4]
                         identities = outputs[:, -1]
                         self.draw_boxes(im0, bbox_xyxy, identities)
-                        self.checkIfDuplicates(identities)
+                        
                         # to MOT format
                         tlwh_bboxs = self.xyxy_to_tlwh(bbox_xyxy)
 
                         # Write MOT compliant results to file
-                        if save_txt:
-                            for j, (tlwh_bbox, output) in enumerate(zip(tlwh_bboxs, outputs)):
-                                bbox_top = tlwh_bbox[0]
-                                bbox_left = tlwh_bbox[1]
-                                bbox_w = tlwh_bbox[2]
-                                bbox_h = tlwh_bbox[3]
-                                identity = output[-1]
+                        for j, (tlwh_bbox, output) in enumerate(zip(tlwh_bboxs, outputs)):
+                            # bbox_top = tlwh_bbox[0]
+                            # bbox_left = tlwh_bbox[1]
+                            # bbox_w = tlwh_bbox[2]
+                            # bbox_h = tlwh_bbox[3]
+                            # identity = output[-1]
+                            self.checkIfDuplicates(identities)
                 else:
                     s += '%g %s, ' % (0, 'person')  # add to string
                     deepsort.increment_ages()
@@ -1211,7 +1300,7 @@ class Main_Tracking():
                 unique_id_list_count = len(self.g_unique_id_list)
                 self.sv.now_detect_count = unique_id_list_count
                 l_log_time = self.sv._log_time
-                dtstring = dt.strftime( '%Y-%m-%d %H:%M:%S - ' )
+                dtstring = dt.strftime( '%Y-%m-%d %H:%M:%S' )
                 self.sv.date_string = dtstring
                 #self.sv.output_format_string = "{dtstring}目前偵測到 {people_count} (FPS:{fps:.2f})\\n人流 ：{unique_id_list_count} / {l_log_time}秒 "
                 self.sv.output_format_string = self.ui.lineEdit_3.text() 
@@ -1220,11 +1309,11 @@ class Main_Tracking():
                 except Exception as e :
                     print(e)
                     logging_out = "輸出格式錯誤，請重新確認"
-                if(self._time_counter > self.sv._log_time):
+                if(self._time_counter >= self.sv._log_time):
                     self._time_counter = 0
                     self.total_unique_list_update(self.g_unique_id_list,start_time)
-                    if(self.sv._log_time > 0):
-                        self.sv.avg_detect_count = unique_id_list_count
+                    
+                    self.sv.avg_detect_count = unique_id_list_count
                     
                     self.now_log_out = logging_out
                     self.g_unique_id_list.clear()
@@ -1238,11 +1327,12 @@ class Main_Tracking():
                     cv2.imshow("show", im)                 
                 else:
                     cv2.destroyAllWindows()
+        tt2 = time.time()       
         cv2.destroyAllWindows()
         if(mode == 'yt' or mode == 'cctv'):
             self.g_webdriver.quit()
 
-    #畫紅色邊界框之FUNCTION
+    
     def draw_boxes(self,img, bbox, identities=None, offset=(0, 0)):
         for i, box in enumerate(bbox):
             x1, y1, x2, y2 = [int(i) for i in box]
@@ -1261,33 +1351,7 @@ class Main_Tracking():
             cv2.putText(img, label, (x1, y1 +
                                     t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 2, [255, 255, 255], 2)
         return img
-    #框選截屏區域之FUNCTION
-    def draw_area_box(self,sx,sy,ex,ey):
-        dc = win32gui.GetDC(0)
-        dcObj = win32ui.CreateDCFromHandle(dc)
-        hwnd = win32gui.WindowFromPoint((0,0))
-        _sx=int(sx)
-        _sy=int(sy)
-        _ex=int(ex)
-        _ey=int(ey)
-        box_cor = (_sx,_sy,_ex,_ey)
-        print(box_cor)
-        red = win32api.RGB(255, 0, 0)
-        while(self.src_state == 1):
-            rect = win32gui.CreateRoundRectRgn(*box_cor, 4 , 4)
-            
-            win32gui.RedrawWindow(hwnd, box_cor, rect, win32con.RDW_INVALIDATE)
-            time.sleep(0.5)
-            for x in range(25):
-                win32gui.SetPixel(dc, _sx+x, _sy, red)
-                win32gui.SetPixel(dc, _sx+x, _ey, red)
-                win32gui.SetPixel(dc, _ex-x, _sy, red)
-                win32gui.SetPixel(dc, _ex-x, _ey, red)
-                for y in range(25):
-                    win32gui.SetPixel(dc, _sx, _sy+y, red)
-                    win32gui.SetPixel(dc, _ex, _sy+y, red)
-                    win32gui.SetPixel(dc, _sx, _ey-y, red)
-                    win32gui.SetPixel(dc, _ex, _ey-y, red)
+    
     #開始框選之FUNCTION
     def start_drawing(self):
         self.srs = ScreenShot()
@@ -1300,9 +1364,9 @@ class Main_Tracking():
             print("out of range")
             sys.exit()
         
-        draw_area_thread = threading.Thread(target = draw_area_box,args=(self,sx,sy,ex,ey))
-        draw_area_thread.setDaemon(True)
-        draw_area_thread.start()
+        # draw_area_thread = threading.Thread(target = self.draw_area_box,args=(sx,sy,ex,ey))
+        # draw_area_thread.setDaemon(True)
+        # draw_area_thread.start()
     #endregion
     #region UI 功能
     #UI BUTTON FUNCTION 執行區域截圖
@@ -1422,17 +1486,19 @@ class Main_Tracking():
         _ui.pushButton_9.setEnabled(state)
 
     def csv_checkbox(self):
-        self.sv.csv_Writing = ~self.sv.csv_Writing
-        print("check in:")
-        if self.sv.csv_w_path is not None:
+        #print("csv check?")
+        self.sv.csv_Writing = not self.sv.csv_Writing
+        if (self.sv.csv_w_path and not self.sv.csv_w_path.isspace()):
             if self.sv.csv_Writing:
-                print("check in2:")
-                time.sleep(0.5)
+                #print("check in2:")
+                if not os.path.exists(self.sv.csv_w_path):
+                    print("create new csv... : " + self.sv.csv_w_path)
+                    open(self.sv.csv_w_path, 'w',encoding='utf-8').close()
                 self.csv_wr_thread_instance = threading.Thread(target =  self.csv_writing_thread)
                 self.csv_wr_thread_instance.setDaemon(True)
                 self.csv_wr_thread_instance.start()
         else :
-            print("尚未指定路徑")
+            print("csv存檔尚未指定路徑")
             self.now_log_out = "csv存檔尚未指定路徑！"
             self.ui.checkBox_3.setChecked(False)
             self.sv.csv_Writing = False
@@ -1440,57 +1506,94 @@ class Main_Tracking():
            
 
     def csv_writing_thread(self):
-        import pandas as pd
+        
         split_format = []
         split_format = self.sv.write_csv_format.split("|")
         result_col = []
         result_row = []
         
-        
+        tmp_time_counter = 0
         while(self.sv.csv_Writing):
-            time.sleep(self.sv.write_interval_time)
-            
-            for ele in split_format:
-                if ele == 'Time':
-                    result_col.append('Time')
-                    result_row.append(self.sv.date_string)
-                elif ele == 'Title':
-                    result_col.append('Title')
-                    result_row.append(self.sv.exe_title)
-                elif ele == 'Count':
-                    result_col.append('Count')
-                    result_row.append(self.sv.now_detect_count)
-                elif ele == 'AvgCount':
-                    result_col.append('AvgCount')
-                    result_row.append(self.sv.avg_detect_count)
-                elif ele == 'TotalCount':
-                    result_col.append('TotalCount')
-                    result_row.append(self.sv.total_detect_count)
-            df = pd.DataFrame(columns =result_col , data = [result_row] )
-            try:
-                with open(self.sv.csv_w_pat, mode = 'a+') as f:
-                    df.to_csv(f, header=f.tell()==0,index = False)
-            except:
-                result_col.clear()
-                result_row.clear()
-                #self.now_log_out = "請關閉CSV檔案，關閉後將繼續寫入..."
-                continue
-            print(result_row)
-            
-            result_col.clear()
-            result_row.clear()
+            t1 = time.time()
+            time.sleep(0.01)
+            #print("thread 1...")
+            if(self.src_state == 1):
+                #print("thread 2...")
+                if(tmp_time_counter >= self.sv.write_interval_time):
+                    tmp_time_counter = 0
+                    for ele in split_format:
+                        if ele == 'Time':
+                            result_col.append('Time')
+                            result_row.append(self.sv.date_string)
+                        elif ele == 'Title':
+                            result_col.append('Title')
+                            result_row.append(self.sv.exe_title)
+                        elif ele == 'Count':
+                            result_col.append('Count')
+                            result_row.append(self.sv.now_detect_count)
+                        elif ele == 'AvgCount':
+                            result_col.append('AvgCount')
+                            result_row.append(self.sv.avg_detect_count)
+                        elif ele == 'TotalCount':
+                            result_col.append('TotalCount')
+                            result_row.append(self.sv.total_detect_count)
+                    df = pd.DataFrame(columns =result_col , data = [result_row] )
+                    try:
+                        with open(self.sv.csv_w_path, mode = 'a+',encoding='utf-8') as f:
+                            df.to_csv(f, header=f.tell()==0,index = False)
+                    except:
+                        result_col.clear()
+                        result_row.clear()
+                        #self.now_log_out = "請關閉CSV檔案，關閉後將繼續寫入..."
+                        continue
+                    #print(result_row)
+                    
+                    result_col.clear()
+                    result_row.clear()
+            t2 =  time.time()
+            tmp_time_counter += (t2-t1)
         self.csv_wr_thread_instance = None
 
     
 @atexit.register
 def delete_webdriver():
-    print("im out")
+    #print(Main_Tracking.sv.exe_title+" close")
     if(hasattr(Main_Tracking,'g_webdriver')):
         if(Main_Tracking.g_webdriver is not None):
-            print("im close")
+            #print(Main_Tracking.sv.exe_title+" explorer close")
             Main_Tracking.g_webdriver.quit()
         
 
     # main function
-if __name__ == "__main__" :
-    Main_Tracking("main")
+
+from multiprocessing import Process
+import multiprocessing
+def create_process(id,path):
+    Main_Tracking(id,saved_file_init_load=path)
+if __name__=='__main__':
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--json-list-path', type=str, default=None)
+    # args = parser.parse_args()
+    json_list_path='saved_setting/saved_group.json'
+    multiprocessing.freeze_support()
+    # ex: saved_group.json
+    #{
+    # 0:"saved_setting\八德路3段74號.json"
+    # 1:"J:\master_1_down\yolo\crowd_detect-20210701T114137Z-001\crowd_detect\saved_setting\default.json"
+    # ...
+    # }
+    #可以使用相對路徑或絕對路徑
+    
+    data_dict = None
+    with open(json_list_path,encoding="utf-8") as json_data:
+        data_dict = json.load(json_data)
+        print(data_dict)
+    procs = []
+    for key, value in data_dict.items():
+        proc = Process(target=create_process , args = (key,value,))
+        print("in :"+value)
+        procs.append(proc)
+        proc.start()
+    for p in procs:
+        p.join()
+
