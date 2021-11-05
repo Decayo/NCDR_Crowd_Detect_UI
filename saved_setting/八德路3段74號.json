@@ -18,6 +18,6 @@
     "exe_title": "\u516b\u5fb7\u8def3\u6bb574\u865f",
     "model_cfg_json_path": "yolo_model_args/yolov5_model_0.5conf.json",
     "csv_Writing": true,
-    "csv_w_path": "J:/master_1_down/yolo/crowd_detect-20210701T114137Z-001/crowd_detect/\u516b\u5fb7\u8def3\u6bb574\u865f.csv",
+    "csv_w_path": "",
     "input_url": "https://www.youtube.com/watch?v=k4nI701HdaA"
 }
