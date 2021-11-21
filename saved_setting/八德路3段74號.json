@@ -3,11 +3,11 @@
     "_show_video_streaming": false,
     "unique_refresh_time": 180,
     "g_isheadless": false,
-    "output_format_string": "{dtstring}\u76ee\u524d\u5075\u6e2c\u5230 {people_count} (FPS:{fps:.2f})\\\\n\u4eba\u6d41 \uff1a{unique_id_list_count} / {l_log_time}\u79d2",
+    "output_format_string": "{dtstring}目前偵測到 {people_count} (FPS:{fps:.2f}) 人流 ：{unique_id_list_count} (每{l_log_time}秒)",
     "img_size_zoom": 1.0,
     "detect_interval_time": 0,
     "write_interval_time": 10,
-    "write_csv_format": "Time|Title|Count|AvgCount|TotalCount",
+    "write_csv_format": "Time|Title|LogTime|Count|CalTime|AvgCount|TotalCount",
     "sound_effect": "alarm.wav",
     "use_sound_effect": false,
     "sound_threshold": 10,
@@ -19,5 +19,6 @@
     "model_cfg_json_path": "yolo_model_args/yolov5_model_0.5conf.json",
     "csv_Writing": true,
     "csv_w_path": "",
-    "input_url": "https://www.youtube.com/watch?v=k4nI701HdaA"
+    "input_url": "https://www.youtube.com/watch?v=k4nI701HdaA",
+    "calculate_interval_time": 1.0
 }
