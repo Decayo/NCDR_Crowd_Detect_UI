@@ -20,5 +20,6 @@
     "csv_Writing": false,
     "csv_w_path": "",
     "input_url": "",
-    "calculate_interval_time": 1.0
+    "calculate_interval_time": 1.0,
+    "connect_retry_time" : 4
 }

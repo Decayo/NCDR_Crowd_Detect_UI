@@ -84,7 +84,7 @@ class Main_Tracking():
             self.exe_title = '即時人流偵測軟體'
             self.model_cfg_json_path = 'yolov5_model_default.json'
             self.csv_Writing = False
-            
+            self.connect_retry_time = 4
             self.csv_w_path = None
             self.input_url = ''
 
@@ -1031,8 +1031,8 @@ class Main_Tracking():
             model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
         
         #region 爬蟲用變數
-        location = None
-        size = None
+        location = 0
+        size = 0
         src = None
         #endregion
         
@@ -1048,8 +1048,9 @@ class Main_Tracking():
 
         #calculate avg_count
         last_total_count = 0
+        out_of_time_err = None
         
-        #endregion
+            #endregion
         if  ((mode == "yt") or (mode == "cctv")):
             #region 初始化 selenium webdriver and url 判別 (水利署與公路總局)
             options = Options()
@@ -1062,13 +1063,24 @@ class Main_Tracking():
             self.g_webdriver.get(url)
             
             if(mode == "yt"):
-                try:
-                    WebDriverWait(self.g_webdriver, 15).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[@class='ytp-large-play-button ytp-button']"))).click()
-                    # WebDriverWait(driver,5).until(EC.element_to_be_clickable((By.CLASS_NAME,'ytp-iv-video-content')))
-                except TimeoutException as ex:
-                    print('out of time')
-                    sys.exit(1)
+                for retry in range(1,self.sv.connect_retry_time):
+                    try:
+                        WebDriverWait(self.g_webdriver, 30).until(EC.element_to_be_clickable(
+                        (By.XPATH, "//button[@class='ytp-large-play-button ytp-button']"))).click()
+                        # WebDriverWait(driver,5).until(EC.element_to_be_clickable((By.CLASS_NAME,'ytp-iv-video-content')))
+                    except TimeoutException as ex:
+                        out_of_time_err = ex
+                        print('out of time : ' + str(retry) + 'time' )
+                    if out_of_time_err:
+                        out_of_time_err = None
+                        print("out of time err checked")
+                    else:
+                        print("find youtube play button and clicked")
+                        break
+                    if(retry == self.sv.connect_retry_time):
+                        print("out of retry time")
+                        print("please check the internet")
+                        sys.exit(1)
                 # time.sleep(10)
 
                 youtube_panel_xy = None
@@ -1079,7 +1091,7 @@ class Main_Tracking():
                     retrycount+=1
                     time.sleep(0.5)
                     if(retrycount == retrymax_count):
-                        self.now_log_out = "超過重新尋找次數，請重新開啟程序..."
+                        self.now_log_out = "重新尋找..."
                         break
                     try:
                         WebDriverWait(self.g_webdriver, 15).until(EC.element_to_be_clickable(
@@ -1113,6 +1125,7 @@ class Main_Tracking():
                 try:
                     WebDriverWait(self.g_webdriver,10).until(EC.element_to_be_clickable((By.ID,'cctv_image')))
                 except TimeoutException as ex:
+                    print('out of time : ' + str(retry) + 'time' )
                     print(ex.message)
 
                 img = self.g_webdriver.find_element_by_xpath('//div[@id="cctv_image"]/img')

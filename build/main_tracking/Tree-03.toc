@@ -1,0 +1,5 @@
+('J:\\master_1_down\\yolo\\crowd_detect-20210701T114137Z-001\\NCDR_Crowd_Detect\\NCDR_Crowd_Detect\\build\\main_tracking\\locket-0.2.1-py3.6.egg',
+ None,
+ {'*.pyw', 'EGG-INFO', '*.py', '*.pyc', '*.cp36-win_amd64.pyd', '*.pyd'},
+ 'DATA',
+ [])
